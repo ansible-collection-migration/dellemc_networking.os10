@@ -113,13 +113,18 @@ def load_config(module, commands):
     rc, out, err = exec_command(module, 'configure terminal')
     if rc != 0:
         module.fail_json(msg='unable to enter configuration mode', err=to_text(err, errors='surrogate_or_strict'))
-
+    if module.params['use_transaction']:
+        module.warn("Starting transaction")
+        commands.insert(0, 'start transaction')
     commands.append('commit')
     for command in to_list(commands):
         if command == 'end':
             continue
         rc, out, err = exec_command(module, command)
         if rc != 0:
+            if module.params['use_transaction']:
+                module.warn("Discarding transaction")
+                exec_command(module, 'discard')
             module.fail_json(msg=to_text(err, errors='surrogate_or_strict'), command=command, rc=rc)
 
     exec_command(module, 'end')
